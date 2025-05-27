@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Full Infrastructure for Student Portal with S3, CloudFront, API Gateway, Lambda, DynamoDB, KMS
+
+Resources:
+
+  StudentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Students
+      AttributeDefinitions:
+        - AttributeName: studentID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: studentID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  StudentPortalBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: student-portal-frontend-demo
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+  StudentPortalBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StudentPortalBucket
+      PolicyDocument:
+        Statement:
+          - Action: "s3:GetObject"
+            Effect: Allow
+            Principal: "*"
+            Resource: !Sub "${StudentPortalBucket.Arn}/*"
+
+  StudentPortalKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for encrypting student data
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
+  StudentPortalLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: StudentPortalLambdaRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StudentPortalLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !GetAtt StudentsTable.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+
+  StudentPortalLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: StudentPortalFunction
+      Handler: index.lambda_handler
+      Role: !GetAtt StudentPortalLambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 10
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          from boto3.dynamodb.conditions import Key
+
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('Students')
+
+          def lambda_handler(event, context):
+              method = event['httpMethod']
+              if method == "POST":
+                  body = json.loads(event['body'])
+                  table.put_item(Item=body)
+                  return {"statusCode": 200,"headers": {"Access-Control-Allow-Origin": "*"},"body": json.dumps("Student registered successfully")}
+              elif method == "GET":
+                  student_id = event['pathParameters']['studentID']
+                  response = table.get_item(Key={'studentID': student_id})
+                  item = response.get('Item')
+                  if item:
+                      return {"statusCode": 200,"headers": {"Access-Control-Allow-Origin": "*"},"body": json.dumps(item)}
+                  else:
+                      return {"statusCode": 404,"headers": {"Access-Control-Allow-Origin": "*"},"body": json.dumps("Student not found")}
+              return {"statusCode": 400,"headers": {"Access-Control-Allow-Origin": "*"},"body": json.dumps("Unsupported method")}
+
+  StudentPortalApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: StudentPortalApi
+
+  StudentPortalApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt StudentPortalApi.RootResourceId
+      PathPart: students
+      RestApiId: !Ref StudentPortalApi
+
+  StudentPortalApiMethodPost:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref StudentPortalApiResource
+      RestApiId: !Ref StudentPortalApi
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${StudentPortalLambda.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+
+  StudentPortalApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref StudentPortalApi
+      StageName: dev
+    DependsOn:
+      - StudentPortalApiMethodPost
+
+  StudentPortalLambdaPermissionApiGateway:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref StudentPortalLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${StudentPortalApi}/*/*/*
+
+  StudentPortalCloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: Access identity for student portal
+
+  StudentPortalCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - DomainName: !GetAtt StudentPortalBucket.DomainName
+            Id: S3Origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${StudentPortalCloudFrontOAI}
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        DefaultRootObject: index.html

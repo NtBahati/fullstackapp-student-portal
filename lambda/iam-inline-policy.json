@@ -1,0 +1,22 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem"
+            ],
+            "Resource": "arn:aws:dynamodb:REGION:<ACCOUNT_NUMBER>:table/<Table_name>"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:Decrypt",
+                "kms:Encrypt",
+                "kms:GenerateDataKey"
+            ],
+            "Resource": "arn:aws:kms:REGION:<ACCOUNT_NUMBER>:key/<KMS_KEY_ID>"
+        }
+    ]
+}
