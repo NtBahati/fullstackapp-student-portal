@@ -113,3 +113,9 @@ This project integrates modern AWS cloud services including:
 ## 📢 Credits and Usage
 
 This project was built for educational purposes to demonstrate AWS serverless web architectures. It can be extended and customized for real-world projects.
+
+
+<!-- 
+Addition notes from Bahati while creating a terraform code for this same project -->
+
+Tired to dynamcially code the index html forl specifically this line const apiBaseUrl = window._env_?.API_URL || ''; so that we do not have to provide the API URL in the index.html file.

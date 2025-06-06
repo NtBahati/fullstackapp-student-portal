@@ -90,8 +90,12 @@
         &copy; 2025 Webforx Student Portal
     </div>
 
+    <!-- Load environment variables -->
+    <script src="env.js"></script>
+
+    <!-- Main application script -->
     <script>
-        const apiBaseUrl = 'https://b8uma60uda.execute-api.us-east-1.amazonaws.com/dev';
+        const apiBaseUrl = window._env_?.API_URL || '';
 
         const registerForm = document.getElementById('registerForm');
         registerForm.addEventListener('submit', async (e) => {
@@ -155,3 +159,162 @@
 </body>
 
 </html>
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Student Registration Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+
+        .header {
+            background-image: url('images/school-banner.jpg');
+            background-size: cover;
+            background-position: center;
+            height: 200px;
+            color: white;
+            text-align: center;
+            padding-top: 60px;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .form-section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #343a40;
+            color: white;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <img src="images/school-logo.png" alt="School Logo" style="height: 80px;">
+        <div>Welcome to Student Portal</div>
+    </div>
+
+    <div class="container mt-5">
+        <div class="form-section mb-5">
+            <h3>Student Registration</h3>
+            <form id="registerForm">
+                <div class="mb-3">
+                    <label for="studentName" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="studentName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="studentEmail" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="studentEmail" required>
+                </div>
+                <div class="mb-3">
+                    <label for="studentID" class="form-label">Student ID</label>
+                    <input type="text" class="form-control" id="studentID" required>
+                </div>
+                <div class="mb-3">
+                    <label for="studentDept" class="form-label">Department</label>
+                    <input type="text" class="form-control" id="studentDept" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+
+        <div class="form-section">
+            <h3>Retrieve My Info</h3>
+            <form id="fetchForm">
+                <div class="mb-3">
+                    <label for="fetchStudentID" class="form-label">Student ID</label>
+                    <input type="text" class="form-control" id="fetchStudentID" required>
+                </div>
+                <button type="submit" class="btn btn-success">Fetch Info</button>
+            </form>
+            <div id="studentInfo" class="mt-4"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        &copy; 2025 Webforx Student Portal
+    </div>
+
+    <script>
+        const apiBaseUrl = 'https://2qzsar535c.execute-api.us-east-1.amazonaws.com/dev';
+
+        const registerForm = document.getElementById('registerForm');
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('studentName').value,
+                email: document.getElementById('studentEmail').value,
+                studentID: document.getElementById('studentID').value,
+                department: document.getElementById('studentDept').value
+            };
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/students`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.text();
+
+                if (response.ok) {
+                    alert('Registration successful!');
+                    registerForm.reset();
+                } else {
+                    alert('Error registering student: ' + result);
+                }
+            } catch (err) {
+                alert('Failed to register. Network or API issue.');
+                console.error(err);
+            }
+        });
+
+        const fetchForm = document.getElementById('fetchForm');
+        fetchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const studentID = document.getElementById('fetchStudentID').value;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/students/${studentID}`);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        document.getElementById('studentInfo').innerHTML = 'Student record not found.';
+                    } else {
+                        document.getElementById('studentInfo').innerHTML = `Error: ${response.status}`;
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                document.getElementById('studentInfo').innerHTML = `<strong>Name:</strong> ${data.name}<br>
+                    <strong>Email:</strong> ${data.email}<br>
+                    <strong>Department:</strong> ${data.department}`;
+            } catch (err) {
+                document.getElementById('studentInfo').innerHTML = 'Failed to fetch data. Check your network or API.';
+                console.error(err);
+            }
+        });
+    </script>
+
+</body>
+
+</html> -->
